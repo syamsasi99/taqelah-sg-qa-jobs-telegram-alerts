@@ -1,0 +1,53 @@
+name: Telegram Bot Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Set CHAT_ID output
+        id: set-chat-id
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+            echo "chat_id=${{ secrets.PROD_CHAT_ID }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "chat_id=${{ secrets.STAGING_CHAT_ID }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Show CHAT_ID for debug
+        run: echo "Using CHAT_ID=${{ steps.set-chat-id.outputs.chat_id }}"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Restore cached jobs.db
+        uses: actions/cache@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.event.inputs.environment }}
+
+      - name: Trigger telegram bot
+        run: python main.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          CHAT_ID: ${{ steps.set-chat-id.outputs.chat_id }}
+
+      - name: Save updated jobs.db to cache
+        uses: actions/cache@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.event.inputs.environment }}
