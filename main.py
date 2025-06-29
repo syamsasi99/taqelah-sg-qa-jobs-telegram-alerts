@@ -40,6 +40,9 @@ def filter_software_jobs(jobs):
 
 def main():
     """Main entry point of the script."""
+
+
+
     logger.info("Starting....")
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("CHAT_ID")
@@ -50,6 +53,10 @@ def main():
 
     repo = JobRepository(DB_FILE)
     # jobs = load_mock_jobs()
+
+    all_jobs = repo.fetch_all_jobs()
+    for job in all_jobs:
+        print(job)
 
     fetcher = JobFetcher(
         api_host="jsearch.p.rapidapi.com",
