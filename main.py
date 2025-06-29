@@ -59,8 +59,9 @@ def main():
 
     qa_test_engineer_jobs = fetcher.fetch(query="test qa engineer jobs in singapore", num_pages=1)
     lead_qa_engineer_jobs = fetcher.fetch(query="lead qa test engineer jobs in singapore", num_pages=1)
+    principal_qa_engineer_jobs = fetcher.fetch(query="principal qa test engineer jobs in singapore", num_pages=1)
     manager_qa_engineer_jobs = fetcher.fetch(query="manager qa test engineer jobs in singapore", num_pages=1)
-    jobs = qa_test_engineer_jobs + lead_qa_engineer_jobs + manager_qa_engineer_jobs
+    jobs = qa_test_engineer_jobs + lead_qa_engineer_jobs + manager_qa_engineer_jobs + principal_qa_engineer_jobs
     jobs = filter_software_jobs(jobs)
     unique_jobs = {job['job_id']: job for job in jobs}
     jobs = list(unique_jobs.values())
