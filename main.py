@@ -63,7 +63,6 @@ def main():
     jobs = filter_software_jobs(jobs)
     unique_jobs = {job['job_id']: job for job in jobs}
     jobs = list(unique_jobs.values())
-    repo.delete_all_jobs()
     repo.insert_jobs(jobs)
 
     notifier = TelegramNotifier(bot_token, chat_id)
