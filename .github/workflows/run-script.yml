@@ -1,6 +1,7 @@
 name: Telegram Bot Notification
 
 on:
+  # Manual trigger with environment input
   workflow_dispatch:
     inputs:
       environment:
@@ -12,16 +13,31 @@ on:
           - staging
           - production
 
+  # Scheduled trigger: Every day at 11:05 PM Singapore Time (UTC+8) = 15:05 UTC
+  schedule:
+    - cron: '7 15 * * *'
+
 jobs:
   notify:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+
+    # Explicitly set environment to production for cron job
+    environment: production
 
     steps:
+      - name: Determine environment
+        id: determine-env
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "env=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set CHAT_ID output
         id: set-chat-id
         run: |
-          if [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+          if [[ "${{ steps.determine-env.outputs.env }}" == "production" ]]; then
             echo "chat_id=${{ secrets.PROD_CHAT_ID }}" >> "$GITHUB_OUTPUT"
           else
             echo "chat_id=${{ secrets.STAGING_CHAT_ID }}" >> "$GITHUB_OUTPUT"
@@ -48,7 +64,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-${{ github.event.inputs.environment }}
+          key: jobs-db-production
 
       - name: Trigger telegram bot
         run: python main.py
@@ -61,4 +77,4 @@ jobs:
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-${{ github.event.inputs.environment }}
+          key: jobs-db-production
