@@ -50,15 +50,6 @@ jobs:
           path: jobs.db
           key: jobs-db-${{ github.event.inputs.environment }}
 
-      - name: Delete existing jobs.db if exists
-        run: |
-          if [ -f jobs.db ]; then
-            echo "🗑️ Removing existing jobs.db"
-            rm jobs.db
-          else
-            echo "ℹ️ jobs.db not found, skipping delete"
-          fi
-
       - name: Trigger telegram bot
         run: python main.py
         env:
