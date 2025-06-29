@@ -90,3 +90,14 @@ class JobRepository:
             conn.execute("DELETE FROM jobs")
             conn.commit()
         logger.info("All job records have been deleted.")
+
+    def fetch_all_jobs(self) -> List[Tuple]:
+        """Fetch all jobs from the database."""
+        logger.info("Fetching all job records...")
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            return cursor.execute("""
+                SELECT job_id, title, company, location, apply_link, posted_at, is_sent
+                FROM jobs
+                ORDER BY posted_at DESC
+            """).fetchall()

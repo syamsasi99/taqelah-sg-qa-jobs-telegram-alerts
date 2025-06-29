@@ -78,6 +78,10 @@ def main():
         if notifier.send(message):
             repo.mark_as_sent(job[0])
 
+    all_jobs = repo.fetch_all_jobs()
+    for job in all_jobs:
+        print(job)
+
 
 if __name__ == "__main__":
     main()
