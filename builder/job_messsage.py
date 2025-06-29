@@ -43,9 +43,14 @@ class JobMessageBuilder:
                 source = cls.get_source(safe_link)
                 link_lines += f"🔗 <a href='{safe_link}'>{source}</a>\n"
 
-        return (
-            f"📋 <b>{title}</b>\n"
-            f"🏢 <i>{company}</i>\n"
-            f"🕒 Posted: {posted_at}\n"
-            f"{link_lines.strip()}"
-        )
+        parts = [
+            f"📋 <b>{title}</b>",
+            f"🏢 <i>{company}</i>",
+        ]
+
+        if posted_at:
+            parts.append(f"🕒 Posted: {posted_at}")
+
+        parts.append(link_lines.strip())
+
+        return "\n".join(parts)
