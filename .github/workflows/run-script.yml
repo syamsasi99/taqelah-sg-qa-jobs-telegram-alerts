@@ -13,9 +13,8 @@ on:
           - staging
           - production
 
-  # Scheduled trigger: Every day at 11:05 PM Singapore Time (UTC+8) = 15:05 UTC
   schedule:
-    - cron: '7 15 * * *'
+    - cron: '15 15 * * *'
 
 jobs:
   notify:
