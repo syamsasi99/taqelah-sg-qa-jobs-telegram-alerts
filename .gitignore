@@ -1,2 +1,4 @@
 .idea/
 jobs.db
+**/__pycache__/
+
