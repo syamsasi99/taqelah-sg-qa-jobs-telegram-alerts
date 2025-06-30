@@ -41,8 +41,8 @@ def filter_software_jobs(jobs):
 
     return [
         job for job in jobs
-        if any(keyword in job.get("job_description", "").lower() for keyword in keywords)
-           and any(indicator in job.get("job_posted_at", "").lower() for indicator in recent_indicators)
+        if any(keyword in str(job.get("job_description", "")).lower() for keyword in keywords)
+           and any(indicator in str(job.get("job_posted_at", "")).lower() for indicator in recent_indicators)
     ]
 
 
