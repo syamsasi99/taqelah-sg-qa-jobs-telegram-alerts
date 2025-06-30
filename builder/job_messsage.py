@@ -41,7 +41,8 @@ class JobMessageBuilder:
             safe_link = link.strip()
             if safe_link:
                 source = cls.get_source(safe_link)
-                link_lines += f"🔗 <a href='{safe_link}'>{source}</a>\n"
+                if source and len(source) > 0:
+                    link_lines += f"🔗 <a href='{safe_link}'>{source}</a>\n"
 
         parts = [
             f"📋 <b>{title}</b>",
