@@ -20,9 +20,6 @@ jobs:
   notify:
     runs-on: ubuntu-latest
 
-    # Explicitly set environment to production for cron job
-    environment: production
-
     steps:
       - name: Determine environment
         id: determine-env
@@ -63,7 +60,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-production
+          key: jobs-db-${{ steps.determine-env.outputs.env }}
 
       - name: Trigger telegram bot
         run: python main.py
@@ -76,4 +73,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-production
+          key: jobs-db-${{ steps.determine-env.outputs.env }}-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-${{ steps.determine-env.outputs.env }}
