@@ -30,12 +30,20 @@ def load_mock_jobs():
 
 
 def filter_software_jobs(jobs):
-    filtered_jobs = []
-    for job in jobs:
-        description = job.get("job_description", "").lower()
-        if "software" in description or "manual" in description or "automation" in description:
-            filtered_jobs.append(job)
-    return filtered_jobs
+    """
+    Filters job listings based on keywords in description and posting time.
+
+    Includes jobs posted within the last 24 hours (e.g., '1 day ago', 'hours ago', 'minutes ago')
+    and with relevant keywords: 'software', 'manual', or 'automation'.
+    """
+    keywords = ("software", "manual", "automation", "selenium", "cypress", "playwright", "appium", "web", "mobile")
+    recent_indicators = ("1 day ago", "hours", "minutes")
+
+    return [
+        job for job in jobs
+        if any(keyword in job.get("job_description", "").lower() for keyword in keywords)
+           and any(indicator in job.get("job_posted_at", "").lower() for indicator in recent_indicators)
+    ]
 
 
 def main():
