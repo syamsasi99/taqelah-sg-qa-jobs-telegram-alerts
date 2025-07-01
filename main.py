@@ -37,7 +37,7 @@ def filter_software_jobs(jobs):
     and with relevant keywords: 'software', 'manual', or 'automation'.
     """
     keywords = ("software", "manual", "automation", "selenium", "cypress", "playwright", "appium", "web", "mobile")
-    recent_indicators = ("1 day ago", "hours", "minutes")
+    recent_indicators = ("hours", "minutes")
 
     return [
         job for job in jobs
