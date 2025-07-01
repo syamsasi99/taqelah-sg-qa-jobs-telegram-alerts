@@ -31,7 +31,7 @@ class JobFetcher:
             "page": page,
             "num_pages": num_pages,
             "country": country,
-            "date_posted": "all"
+            "date_posted": "today"
         }
 
         try:
