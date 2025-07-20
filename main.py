@@ -57,7 +57,6 @@ def main():
         logger.error("❌ BOT_TOKEN or CHAT_ID is missing.")
         return
 
-    repo = JobRepository(DB_FILE)
     # jobs = load_mock_jobs()
 
     fetcher = JobFetcher(
@@ -73,10 +72,8 @@ def main():
     jobs = filter_software_jobs(jobs)
     unique_jobs = {job['job_id']: job for job in jobs}
     jobs = list(unique_jobs.values())
-    repo.insert_jobs(jobs)
 
     notifier = TelegramNotifier(bot_token, chat_id)
-    jobs = repo.fetch_unsent_jobs(limit=MAX_JOBS)
 
     if not jobs:
         logger.info("📭 No new QA jobs found.")
@@ -85,8 +82,7 @@ def main():
     for index, job in enumerate(jobs, start=1):
         message = JobMessageBuilder.build(job)
         logger.info("Sending job %d/%d...", index, len(jobs))
-        if notifier.send(message):
-            repo.mark_as_sent(job[0])
+        notifier.send(message)
 
 
 if __name__ == "__main__":
