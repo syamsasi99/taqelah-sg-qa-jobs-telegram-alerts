@@ -15,13 +15,15 @@ class JobMessageBuilder:
             url (str): The URL string.
 
         Returns:
-            str: The domain source, or 'apply' if parsing fails.
+            str: The domain source, or 'apply' if parsing fails or no domain found.
         """
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
+            if not domain:
+                return "apply"
             return domain[4:] if domain.startswith("www.") else domain
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             return "apply"
 
     @classmethod
