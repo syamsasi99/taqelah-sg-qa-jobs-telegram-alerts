@@ -47,7 +47,7 @@ class JobMessageBuilder:
             work_location = job.get("job_location") or job.get("job_country", "Unknown")
 
         # Work Arrangement
-        desc = job.get("job_description", "").lower()
+        desc = (job.get("job_description") or "").lower()
         if job.get("job_is_remote"):
             work_arrangement = "Remote"
         elif "hybrid" in desc:
@@ -56,7 +56,7 @@ class JobMessageBuilder:
             work_arrangement = "Onsite"
 
         # Work Status
-        emp_type = job.get("job_employment_type", "").lower()
+        emp_type = (job.get("job_employment_type") or "").strip().lower()
         if "full" in emp_type:
             work_status = "Full Time"
         elif "part" in emp_type:
