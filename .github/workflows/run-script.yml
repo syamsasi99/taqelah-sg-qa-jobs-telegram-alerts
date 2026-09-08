@@ -44,13 +44,17 @@ jobs:
       # static one would pin the very first jobs.db forever. Writing a new key
       # each run and restoring the newest match by prefix keeps the sent-job
       # ledger alive between runs.
+      #
+      # The environment is part of the prefix so staging and production keep
+      # separate ledgers - a shared one would let a staging dispatch mark jobs
+      # as sent and silently suppress them in production.
       - name: Restore jobs.db
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-${{ github.run_id }}
+          key: jobs-db-${{ inputs.environment || 'production' }}-${{ github.run_id }}
           restore-keys: |
-            jobs-db-
+            jobs-db-${{ inputs.environment || 'production' }}-
 
       - name: Trigger telegram bot
         run: python main.py
