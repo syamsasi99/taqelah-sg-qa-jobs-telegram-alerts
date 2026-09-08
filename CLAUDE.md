@@ -37,7 +37,7 @@ Behaviour overrides: `RECENT_WINDOW_HOURS` (48), `MAX_JOBS` (30), `SEND_DELAY_SE
 
 ```
 JobFetcher.fetch() x4 queries   jsearch/job_fetcher.py
-  -> filter_software_jobs()     main.py         keyword AND recency
+  -> filter_software_jobs()     main.py         qa title AND software AND recency
   -> dedupe by job_id           main.py         within one run
   -> JobRepository.insert_jobs  db/repository.py job_id PRIMARY KEY drops repeats
   -> fetch_unsent_jobs          db/repository.py across runs
@@ -61,6 +61,20 @@ roughly 29–46 hours, so **nothing the API returns is ever under 24h old** — 
 `"hours"`/`"minutes"` in that string and silently dropped 100% of jobs for two weeks while
 every CI run stayed green. Use the `job_posted_at_timestamp` epoch field. `tests/test_main.py`
 pins this as a regression.
+
+**Relevance is gated on the job TITLE, not the description.** JSearch fuzzy-matches the
+query, so a search for QA roles returns SREs, network engineers and mechanical engineers.
+Searching descriptions for generic words (`software`, `web`) matched nearly all of them — one
+production run delivered 12 messages of which 0 were software QA. `is_qa_role` requires a
+QA/test token in the title and rejects non-software test domains (engine test cells,
+semiconductor defectivity, calibration); `has_software_context` then requires evidence the
+role is software rather than manufacturing. Patterns must be specific — a bare `application`
+matched "microsoft office applications" in a factory QA listing.
+
+**Expect few or no matches on most days.** Measured live: 30 jobs over a full week across 3
+pages returned 0 software QA roles, all from a single publisher (LinkedIn via Bing). Silence
+usually means the upstream data has nothing, not that the filter is broken — check the funnel
+log before loosening anything.
 
 **The 48h window and the ledger are coupled.** A window wider than the 24h cron interval means
 a job matches on two consecutive runs. Dedupe via `JobRepository` is what makes that safe —

@@ -86,10 +86,11 @@ taqelah-sg-qa-jobs-telegram-alerts/
 
 ```text
 1. Fetch jobs from JSearch API (4 queries)
-2. Keep jobs whose title/description match a QA keyword
-3. Keep jobs posted within RECENT_WINDOW_HOURS, by epoch timestamp
-4. Insert into SQLite; the job_id primary key drops repeats
-5. Send only jobs still marked unsent, then mark them sent
+2. Keep jobs whose TITLE names a software QA/test role
+3. Drop non-software test domains (test cells, semiconductor, calibration)
+4. Keep jobs posted within RECENT_WINDOW_HOURS, by epoch timestamp
+5. Insert into SQLite; the job_id primary key drops repeats
+6. Send only jobs still marked unsent, then mark them sent
 ```
 
 > ⚠️ Recency is filtered on `job_posted_at_timestamp`, **not** the human-readable

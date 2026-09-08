@@ -4,7 +4,8 @@ import time
 
 import pytest
 
-from main import filter_software_jobs, is_recent, matches_keywords
+from main import (filter_software_jobs, has_software_context, is_qa_role,
+                  is_recent)
 
 HOUR = 3600
 NOW = 1_757_000_000.0
@@ -14,7 +15,7 @@ def job(**overrides):
     base = {
         "job_id": "abc",
         "job_title": "QA Engineer",
-        "job_description": "Automation testing role",
+        "job_description": "Software automation testing role, agile team",
         "job_posted_at_timestamp": NOW - 5 * HOUR,
     }
     base.update(overrides)
@@ -72,39 +73,97 @@ def test_is_recent_defaults_to_wall_clock():
     assert is_recent(job(job_posted_at_timestamp=time.time() - HOUR)) is True
 
 
-# --- matches_keywords ------------------------------------------------------
+# --- is_qa_role ------------------------------------------------------------
 
-def test_matches_keyword_in_description():
-    assert matches_keywords(job(job_title="Engineer",
-                                job_description="Selenium suite")) is True
-
-
-def test_matches_keyword_in_title_only():
-    """Regression: the old filter only searched job_description."""
-    assert matches_keywords(job(job_title="Mobile Test Engineer",
-                                job_description="")) is True
-
-
-def test_matches_keyword_is_case_insensitive():
-    assert matches_keywords(job(job_title="", job_description="AUTOMATION")) is True
+@pytest.mark.parametrize("title", [
+    "QA Engineer",
+    "Senior SDET",
+    "Test Automation Engineer",
+    "Software Quality Assurance Analyst",
+    "Tester (1 Year Contract)",
+    "Test Lead",
+])
+def test_is_qa_role_accepts_qa_titles(title):
+    assert is_qa_role(job(job_title=title)) is True
 
 
-def test_no_keyword_match():
-    assert matches_keywords(job(job_title="Chef",
-                                job_description="Cooking role")) is False
+@pytest.mark.parametrize("title", [
+    # Real titles the loose filter let through into the production group.
+    "Site Reliability Engineer - Elite Quant Fund",
+    "Network Engineer Team Lead",
+    "Defectivity Control Engineer",
+    "Lead - VM & App Security Engineer",
+    "System Engineer(HPC)",
+    "Manager, Assurance & Advisory",
+    "Lead Engineering Manager, Engagement And Case Study Management Programme",
+])
+def test_is_qa_role_rejects_non_qa_titles(title):
+    assert is_qa_role(job(job_title=title)) is False
 
 
-def test_matches_keywords_survives_none_fields():
-    assert matches_keywords({"job_title": None, "job_description": None}) is False
+@pytest.mark.parametrize("title", [
+    # Say "test" but are not software: engine test cells, hardware field test.
+    "Field Test Engineer",
+    "Technician/ Lead Technician (Test Cell)",
+    "Assistant Manager - Mechanical Engineering",
+    "Calibration Test Engineer",
+])
+def test_is_qa_role_rejects_non_software_test_domains(title):
+    assert is_qa_role(job(job_title=title)) is False
+
+
+def test_is_qa_role_is_case_insensitive():
+    assert is_qa_role(job(job_title="senior qa automation engineer")) is True
+
+
+def test_is_qa_role_survives_none_title():
+    assert is_qa_role({"job_title": None}) is False
+
+
+def test_is_qa_role_does_not_read_description():
+    """The signal must be in the title; descriptions mention QA constantly."""
+    assert is_qa_role(job(job_title="Data Engineer",
+                          job_description="work with our QA test team")) is False
+
+
+# --- has_software_context --------------------------------------------------
+
+def test_software_context_from_description():
+    assert has_software_context(job(job_title="QA Engineer",
+                                    job_description="Selenium and CI/CD")) is True
+
+
+def test_software_context_rejects_office_applications():
+    """Regression: a bare "application" matched "microsoft office applications"
+    in a manufacturing QA listing and let it through."""
+    j = job(job_title="Engineer, Customer Quality Assurance",
+            job_description="proficiency in microsoft office applications. "
+                            "failure analysis of products")
+    assert has_software_context(j) is False
+
+
+def test_software_context_rejects_industrial_automation():
+    j = job(job_title="Automation Engineer BMS/EMS",
+            job_description="building management and energy management systems")
+    assert has_software_context(j) is False
+
+
+def test_software_context_survives_none_fields():
+    assert has_software_context({"job_title": None, "job_description": None}) is False
 
 
 # --- filter_software_jobs --------------------------------------------------
 
-def test_filter_requires_both_keyword_and_recency():
+def test_filter_requires_qa_title_software_context_and_recency():
     jobs = [
-        job(job_id="keep", job_posted_at_timestamp=NOW - 10 * HOUR),
-        job(job_id="stale", job_posted_at_timestamp=NOW - 200 * HOUR),
-        job(job_id="offtopic", job_title="Chef", job_description="Cooking",
+        job(job_id="keep", job_title="QA Automation Engineer",
+            job_description="Selenium, CI/CD", job_posted_at_timestamp=NOW - 10 * HOUR),
+        job(job_id="stale", job_title="QA Automation Engineer",
+            job_description="Selenium, CI/CD", job_posted_at_timestamp=NOW - 200 * HOUR),
+        job(job_id="not-qa", job_title="Network Engineer Team Lead",
+            job_description="Selenium, CI/CD", job_posted_at_timestamp=NOW - 10 * HOUR),
+        job(job_id="not-software", job_title="Quality Assurance Engineer",
+            job_description="failure analysis of moulded products",
             job_posted_at_timestamp=NOW - 10 * HOUR),
     ]
     kept = filter_software_jobs(jobs, now=NOW)
