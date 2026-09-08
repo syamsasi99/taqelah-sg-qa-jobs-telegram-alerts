@@ -83,8 +83,9 @@ staging/production choice. GitHub's scheduler routinely delays this by hours; no
 depend on the run's wall-clock time.
 
 **Environment secrets.** The job must declare `environment:` for the environment whose secrets
-it wants — GitHub injects only that environment's secrets. Both environments expose the chat
-target as `CHAT_ID`; `BOT_TOKEN` and `RAPIDAPI_KEY` are repo-level.
+it wants — GitHub injects only that environment's secrets. The chat target resolves as
+`CHAT_ID || PROD_CHAT_ID || STAGING_CHAT_ID`, so either naming works; `BOT_TOKEN` and
+`RAPIDAPI_KEY` are repo-level.
 
 **The ledger survives via `actions/cache`.** `actions/cache` never overwrites an existing key,
 so the key rotates per run (`jobs-db-<env>-<run_id>`) with a prefix `restore-keys`. The
