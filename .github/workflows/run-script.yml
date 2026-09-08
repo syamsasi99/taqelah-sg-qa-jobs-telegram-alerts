@@ -20,36 +20,17 @@ jobs:
   notify:
     runs-on: ubuntu-latest
 
-    # Explicitly set environment to production for cron job
-    environment: production
+    # Scheduled runs are always production; a manual run honours the choice.
+    # The job MUST declare the environment it wants, because GitHub only
+    # injects secrets belonging to the environment named here.
+    environment: ${{ inputs.environment || 'production' }}
 
     steps:
-      - name: Determine environment
-        id: determine-env
-        run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "env=production" >> "$GITHUB_OUTPUT"
-          else
-            echo "env=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Set CHAT_ID output
-        id: set-chat-id
-        run: |
-          if [[ "${{ steps.determine-env.outputs.env }}" == "production" ]]; then
-            echo "chat_id=${{ secrets.PROD_CHAT_ID }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "chat_id=${{ secrets.STAGING_CHAT_ID }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Show CHAT_ID for debug
-        run: echo "Using CHAT_ID=${{ steps.set-chat-id.outputs.chat_id }}"
-
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -59,21 +40,25 @@ jobs:
       - name: Run unit tests
         run: pytest tests --disable-warnings --maxfail=1
 
-      - name: Restore cached jobs.db
+      # Rotating key: actions/cache never overwrites an existing key, so a
+      # static one would pin the very first jobs.db forever. Writing a new key
+      # each run and restoring the newest match by prefix keeps the sent-job
+      # ledger alive between runs.
+      #
+      # The environment is part of the prefix so staging and production keep
+      # separate ledgers - a shared one would let a staging dispatch mark jobs
+      # as sent and silently suppress them in production.
+      - name: Restore jobs.db
         uses: actions/cache@v4
         with:
           path: jobs.db
-          key: jobs-db-production
+          key: jobs-db-${{ inputs.environment || 'production' }}-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-${{ inputs.environment || 'production' }}-
 
       - name: Trigger telegram bot
         run: python main.py
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          CHAT_ID: ${{ steps.set-chat-id.outputs.chat_id }}
-
-      - name: Save updated jobs.db to cache
-        uses: actions/cache@v4
-        with:
-          path: jobs.db
-          key: jobs-db-production
+          CHAT_ID: ${{ secrets.CHAT_ID }}

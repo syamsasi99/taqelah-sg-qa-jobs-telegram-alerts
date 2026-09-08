@@ -1,5 +1,6 @@
 """Job message builder for Telegram notifications."""
 
+from html import escape
 from urllib.parse import urlparse
 
 
@@ -37,14 +38,18 @@ class JobMessageBuilder:
         Returns:
             str: Formatted job message.
         """
-        title = job.get("job_title", "No Title")
-        company = job.get("employer_name", "Unknown Company")
+        # Everything interpolated below is escaped: parse_mode is HTML, so an
+        # unescaped "&" or "<" in a job title makes Telegram reject the whole
+        # message with a 400 and the listing is silently lost.
+        title = escape(str(job.get("job_title") or "No Title"))
+        company = escape(str(job.get("employer_name") or "Unknown Company"))
 
         # Work Location
         if job.get("job_is_remote"):
             work_location = "Worldwide"
         else:
-            work_location = job.get("job_location") or job.get("job_country", "Unknown")
+            work_location = job.get("job_location") or job.get("job_country") or "Unknown"
+        work_location = escape(str(work_location))
 
         # Work Arrangement
         desc = (job.get("job_description") or "").lower()
@@ -83,23 +88,25 @@ class JobMessageBuilder:
             salary_info = None
 
         # Links
-        apply_links = set()
+        # dict preserves insertion order, so message output is deterministic.
+        apply_links = {}
         if job.get("job_apply_link"):
-            apply_links.add(job["job_apply_link"])
+            apply_links[job["job_apply_link"]] = None
 
         if isinstance(job.get("apply_options"), list):
             for option in job["apply_options"]:
                 link = option.get("apply_link")
                 if link:
-                    apply_links.add(link)
+                    apply_links[link] = None
 
         link_lines = ""
         for link in apply_links:
             source = cls.get_source(link)
             if source:
-                link_lines += f"🔗 <a href='{link}'>{source}</a>\n"
+                link_lines += (f"🔗 <a href='{escape(link, quote=True)}'>"
+                               f"{escape(source)}</a>\n")
 
-        posted_at = job.get("job_posted_at", "N/A")
+        posted_at = escape(str(job.get("job_posted_at") or "N/A"))
 
         parts = [
             f"📋 <b>{title}</b>",

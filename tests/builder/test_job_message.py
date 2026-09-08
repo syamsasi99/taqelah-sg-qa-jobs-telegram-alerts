@@ -126,3 +126,52 @@ def test_build_with_salary_but_no_period():
 
     assert "💰 Salary: $8,000 – $12,000" in message
     assert "per" not in message  # No period line
+
+
+def test_build_escapes_html_special_characters():
+    """Unescaped & or < makes Telegram reject the message with a 400."""
+    job = {
+        "job_title": "R&D QA Engineer <Automation>",
+        "employer_name": "Smith & Sons",
+        "job_location": "Singapore & Remote",
+        "job_posted_at": "1 day ago",
+    }
+
+    message = JobMessageBuilder.build(job)
+
+    assert "R&amp;D QA Engineer &lt;Automation&gt;" in message
+    assert "Smith &amp; Sons" in message
+    assert "Singapore &amp; Remote" in message
+    # The only raw angle brackets left are our own formatting tags.
+    assert "<Automation>" not in message
+
+
+def test_build_escapes_ampersand_in_apply_link():
+    job = {
+        "job_title": "QA Engineer",
+        "employer_name": "Acme",
+        "job_apply_link": "https://jobs.acme.com/apply?id=1&src=tg",
+        "job_posted_at": "1 day ago",
+    }
+
+    message = JobMessageBuilder.build(job)
+
+    assert "href='https://jobs.acme.com/apply?id=1&amp;src=tg'" in message
+
+
+def test_build_link_order_is_deterministic():
+    job = {
+        "job_title": "QA Engineer",
+        "employer_name": "Acme",
+        "job_apply_link": "https://first.com/a",
+        "apply_options": [
+            {"apply_link": "https://second.com/b"},
+            {"apply_link": "https://third.com/c"},
+        ],
+        "job_posted_at": "1 day ago",
+    }
+
+    messages = {JobMessageBuilder.build(job) for _ in range(20)}
+    assert len(messages) == 1
+    order = messages.pop()
+    assert order.index("first.com") < order.index("second.com") < order.index("third.com")

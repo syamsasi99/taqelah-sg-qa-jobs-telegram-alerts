@@ -31,43 +31,53 @@ pip install -r requirements.txt
 
 ### 3. Set environment variables
 
+Copy the template and fill it in. `.env` is gitignored - never commit real values.
+
 ```bash
-export TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-export CHAT_ID=your_chat_id
-export RAPIDAPI_KEY=your_rapidapi_key
+cp .env.example .env
 ```
 
-> 💡 You can also use a `.env` file with `python-dotenv`:
 ```
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-CHAT_ID=your_chat_id
+CHAT_ID=your_chat_id          # group IDs are negative, e.g. -1001234567890
 RAPIDAPI_KEY=your_rapidapi_key
 ```
+
+Real environment variables take precedence over `.env`, so CI secrets always win.
 
 ### 4. Run the notifier
 
 ```bash
-python -m main.py
+python main.py
 ```
+
+Point `CHAT_ID` at a **test group** when running locally. Optional overrides:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `RECENT_WINDOW_HOURS` | `48` | How old a job may be and still be sent |
+| `MAX_JOBS` | `30` | Max unsent jobs dispatched per run |
+| `SEND_DELAY_SECONDS` | `1` | Pause between Telegram sends |
+| `DB_FILE` | `jobs.db` | SQLite ledger location |
 
 ---
 
 ## 🧱 Project Structure
 
 ```
-job_notifier/
-├── api/
+taqelah-sg-qa-jobs-telegram-alerts/
+├── jsearch/
 │   └── job_fetcher.py         # External API communication
 ├── builder/
-│   └── job_message.py         # Message formatting (Builder pattern)
+│   └── job_messsage.py        # Message formatting (Builder pattern)
 ├── db/
-│   └── repository.py          # DB access (Repository pattern)
+│   └── repository.py          # Sent-job ledger (Repository pattern)
 ├── notifier/
 │   └── telegram.py            # Telegram adapter
 ├── utils/
 │   └── logger.py              # Shared logger
-├── config.py                  # Constants and configuration
-├── main.py                    # Orchestrator
+├── tests/                     # pytest suite
+├── main.py                    # Orchestrator and filtering
 ```
 
 ---
@@ -75,21 +85,35 @@ job_notifier/
 ## 🧪 Sample Job Flow
 
 ```text
-1. Fetch jobs from JSearch API  
-2. Insert unique jobs into SQLite  
-3. Identify unsent jobs  
-4. Send each job to Telegram  
-5. Mark job as sent  
+1. Fetch jobs from JSearch API (4 queries)
+2. Keep jobs whose title/description match a QA keyword
+3. Keep jobs posted within RECENT_WINDOW_HOURS, by epoch timestamp
+4. Insert into SQLite; the job_id primary key drops repeats
+5. Send only jobs still marked unsent, then mark them sent
 ```
+
+> ⚠️ Recency is filtered on `job_posted_at_timestamp`, **not** the human-readable
+> `job_posted_at` string. JSearch's index lags real posting time by ~29-46 hours,
+> so `job_posted_at` is never "N hours ago" - matching that string silently
+> dropped 100% of jobs for two weeks. The 48h window means a job can appear in
+> two consecutive daily runs, which is exactly why the SQLite ledger must
+> persist between runs (see the cache step in the workflow).
 
 ---
 
 ## 📌 Requirements
 
 ```text
-- Python 3.8+
+- Python 3.11+
 - requests
 - python-dotenv
+- pytest, requests-mock (tests)
+```
+
+Run the tests with:
+
+```bash
+pytest tests -q
 ```
 
 ---
