@@ -1,6 +1,7 @@
 """Fetch QA job listings from JSearch and send unseen ones to Telegram."""
 
 import os
+import re
 import sys
 import time
 
@@ -36,16 +37,58 @@ QUERIES = (
     "manager qa test engineer jobs in singapore",
 )
 
-KEYWORDS = (
-    "software", "manual", "automation", "selenium",
-    "cypress", "playwright", "appium", "web", "mobile",
+# A QA/test signal must appear in the TITLE. Searching the description for
+# generic words like "software" or "web" matched nearly every tech listing and
+# let through SREs, network engineers and mechanical engineers.
+TITLE_SIGNALS = (
+    r"\bqa\b", r"\bq\.a\.", r"quality assurance", r"quality engineer",
+    r"\bsdet\b", r"tester", r"test engineer", r"test automation",
+    r"automation engineer", r"test analyst", r"test lead", r"test manager",
+    r"testing", r"\bsoftware quality\b",
+)
+
+# Non-software disciplines that still say "test" or "quality" in the title:
+# engine test cells, semiconductor defectivity, calibration labs.
+TITLE_DENY = (
+    r"field test", r"test cell", r"mechanical", r"electrical", r"civil",
+    r"chemical", r"semiconductor", r"defectivity", r"wafer", r"laborator",
+    r"calibration", r"non-destructive", r"technician", r"welding",
+)
+
+# Evidence the role is about software rather than manufacturing or facilities.
+SOFTWARE_CONTEXT = (
+    # NB: no bare "application" - it matches "microsoft office applications"
+    # in manufacturing QA listings.
+    r"\bsoftware\b", r"\bsdlc\b", r"\bagile\b", r"\bscrum\b",
+    r"\bapi\b", r"selenium", r"cypress", r"playwright", r"appium", r"postman",
+    r"automation framework", r"test case", r"test script", r"regression test",
+    r"ci/cd", r"jenkins", r"devops", r"\bjira\b", r"back-?end", r"front-?end",
+    r"web app", r"mobile app", r"microservice",
 )
 
 
-def matches_keywords(job):
-    """True if the job title or description mentions a tracked keyword."""
-    haystack = f"{job.get('job_title') or ''} {job.get('job_description') or ''}"
-    return any(keyword in haystack.lower() for keyword in KEYWORDS)
+def _matches(patterns, text):
+    lowered = (text or "").lower()
+    return any(re.search(pattern, lowered) for pattern in patterns)
+
+
+def is_qa_role(job):
+    """True if the job TITLE names a QA/test role in a software discipline."""
+    title = job.get("job_title") or ""
+    if _matches(TITLE_DENY, title):
+        return False
+    return _matches(TITLE_SIGNALS, title)
+
+
+def has_software_context(job):
+    """True if the title or description shows this is a software role.
+
+    Guards against industrial and manufacturing QA - "Automation Engineer
+    BMS/EMS", "Senior Quality Assurance Manager" at a factory - which clear
+    the title check but are not what this bot is for.
+    """
+    return _matches(SOFTWARE_CONTEXT,
+                    f"{job.get('job_title') or ''} {job.get('job_description') or ''}")
 
 
 def is_recent(job, now=None, window_hours=None):
@@ -66,12 +109,13 @@ def is_recent(job, now=None, window_hours=None):
 
 
 def filter_software_jobs(jobs, now=None):
-    """Keep recent, QA-relevant jobs and log how many survive each stage."""
-    by_keyword = [job for job in jobs if matches_keywords(job)]
-    recent = [job for job in by_keyword if is_recent(job, now=now)]
+    """Keep recent, software-QA jobs and log how many survive each stage."""
+    qa_roles = [job for job in jobs if is_qa_role(job)]
+    software = [job for job in qa_roles if has_software_context(job)]
+    recent = [job for job in software if is_recent(job, now=now)]
     logger.info(
-        "Filter funnel: fetched %d -> keyword %d -> recent (<=%gh) %d",
-        len(jobs), len(by_keyword), RECENT_WINDOW_HOURS, len(recent),
+        "Filter funnel: fetched %d -> qa title %d -> software %d -> recent (<=%gh) %d",
+        len(jobs), len(qa_roles), len(software), RECENT_WINDOW_HOURS, len(recent),
     )
     return recent
 
