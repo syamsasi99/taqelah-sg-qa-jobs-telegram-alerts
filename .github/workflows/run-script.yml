@@ -61,4 +61,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          # Prefer CHAT_ID; fall back to the per-environment names that predate
+          # it. GitHub exposes only the active environment's secrets, so at most
+          # one of these is ever non-empty.
+          CHAT_ID: ${{ secrets.CHAT_ID || secrets.PROD_CHAT_ID || secrets.STAGING_CHAT_ID }}
